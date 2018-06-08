@@ -37,6 +37,15 @@ func FileTailCopy(fileName string, pos int64, fileOut string, whence int, bufSiz
 	return Copy(fin, out, bufSize)
 }
 
+func truncateFile(fin *os.File, pos int64) error {
+	err := fin.Truncate(pos)
+	if err != nil {
+		return err
+	}
+	fin.Seek(0, 0)
+	fin.Sync()
+	return nil
+}
 func Copy(reader io.Reader, writer io.Writer, bufSize uint) (err error) {
 	var n int
 	buf := make([]byte, bufSize)
@@ -57,4 +66,20 @@ func Copy(reader io.Reader, writer io.Writer, bufSize uint) (err error) {
 			return nil
 		}
 	}
+}
+
+func FileTruncate(filename string, pos int64) error {
+	fin, err := os.OpenFile(filename, os.O_RDWR, 0666)
+	if err != nil {
+		return err
+	}
+	defer fin.Close()
+	stat, err := fin.Stat()
+	if err != nil {
+		return err
+	}
+	if pos >= stat.Size() {
+		return nil
+	}
+	return truncateFile(fin, pos)
 }
