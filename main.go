@@ -10,7 +10,8 @@ var (
 	input    = flag.String("i", "", "input filename")
 	output   = flag.String("o", "", "destination filename")
 	position = flag.Int64("p", 0, "start position to copy")
-	whence   = flag.Int("w", 0, "according to whence: 0 means relative to the origin of the file, 1 means")
+	whence   = flag.Int("w", 0, "according to whence: 0 means relative to the origin of the file, 1 means"+
+		"relative to the current offset, and 2 means relative to the end.")
 	bufSize  = flag.Uint("b", 1024, "buffer size")
 	truncate = flag.Bool("t", false, "truncate file")
 )
