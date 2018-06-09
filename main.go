@@ -18,11 +18,14 @@ var (
 
 func main() {
 	flag.Parse()
-
+	if *input == "" || *truncate && *position == 0 {
+		flag.Usage()
+	}
 	if *output != "" {
 		err := fsissors.FileTailCopy(*input, *position, *output, *whence, *bufSize)
 		if err != nil {
 			fmt.Printf("file copy error: %s\n", err.Error())
+			return
 		}
 	}
 	if *truncate {
@@ -31,5 +34,4 @@ func main() {
 			fmt.Printf("failed to truncate file: %s", err.Error())
 		}
 	}
-}
 }
