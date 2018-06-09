@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/skiloop/fsissors/fsissors"
+	"os"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 
 func main() {
 	flag.Parse()
-	if *input == "" || *truncate && *position == 0 {
+	if *input == "" {
 		flag.Usage()
 	}
 	if *output != "" {
@@ -29,6 +30,14 @@ func main() {
 		}
 	}
 	if *truncate {
+		if *output == "" {
+			accept := 'N'
+			fmt.Fprintf(os.Stderr, "truncate %s to %d (y/N)", *input, *position)
+			fmt.Scanf("%c", &accept)
+			if accept != 'y' && accept != 'Y' {
+				return
+			}
+		}
 		err := fsissors.FileTruncate(*input, *position)
 		if err != nil {
 			fmt.Printf("failed to truncate file: %s", err.Error())
