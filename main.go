@@ -11,6 +11,7 @@ var (
 	input    = flag.String("i", "", "input filename")
 	output   = flag.String("o", "", "destination filename")
 	position = flag.Int64("p", 0, "start position to copy")
+	copySize = flag.Int64("s", 0, "bytes to copy, 0 to copy to end of file")
 	whence   = flag.Int("w", 0, "according to whence: 0 means relative to the origin of the file, 1 means "+
 		"relative to the current offset, and 2 means relative to the end.")
 	bufSize  = flag.Uint("b", 1024, "buffer size")
@@ -23,7 +24,7 @@ func main() {
 		flag.Usage()
 	}
 	if *output != "" {
-		err := fsissors.FileTailCopy(*input, *position, *output, *whence, *bufSize)
+		err := fsissors.FileCopy(*input, *position, *output, *whence, *bufSize, *copySize)
 		if err != nil {
 			fmt.Printf("file copy error: %s\n", err.Error())
 			return

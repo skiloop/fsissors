@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-func FileTailCopy(fileName string, pos int64, fileOut string, whence int, bufSize uint) error {
+func FileCopy(fileName string, pos int64, fileOut string, whence int, bufSize uint, size int64) error {
 	if bufSize == 0 {
 		bufSize = 1024
 	}
@@ -34,7 +34,7 @@ func FileTailCopy(fileName string, pos int64, fileOut string, whence int, bufSiz
 		return err
 	}
 	defer out.Close()
-	return Copy(fin, out, bufSize)
+	return Copy(fin, out, bufSize, size)
 }
 
 func truncateFile(fin *os.File, pos int64) error {
@@ -46,10 +46,11 @@ func truncateFile(fin *os.File, pos int64) error {
 	fin.Sync()
 	return nil
 }
-func Copy(reader io.Reader, writer io.Writer, bufSize uint) (err error) {
+func Copy(reader io.Reader, writer io.Writer, bufSize uint, size int64) (err error) {
 	var n int
+	var copySize int64
+	copySize = 0
 	buf := make([]byte, bufSize)
-
 	for {
 		n, err = reader.Read(buf)
 
@@ -57,15 +58,20 @@ func Copy(reader io.Reader, writer io.Writer, bufSize uint) (err error) {
 			return err
 		}
 		if n > 0 {
+			if size > 0 && copySize+int64(n) > size {
+				n = int(size - copySize)
+			}
 			_, werr := writer.Write(buf[:n])
 			if werr != nil {
 				return werr
 			}
+			copySize += int64(n)
 		}
-		if err == io.EOF {
-			return nil
+		if err == io.EOF || (size > 0 && copySize >= size) {
+			break
 		}
 	}
+	return nil
 }
 
 func FileTruncate(filename string, pos int64) error {
