@@ -1,47 +1,54 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/skiloop/fsissors/fsissors"
 	"os"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	input    = flag.String("i", "", "input filename")
-	output   = flag.String("o", "", "destination filename")
-	position = flag.Int64("p", 0, "start position to copy")
-	copySize = flag.Int64("s", 0, "bytes to copy, 0 to copy to end of file")
-	whence   = flag.Int("w", 0, "according to whence: 0 means relative to the origin of the file, 1 means "+
-		"relative to the current offset, and 2 means relative to the end.")
-	bufSize  = flag.Uint("b", 1024, "buffer size")
-	truncate = flag.Bool("t", false, "truncate file")
+	copyCmd        = kingpin.Command("copy", "copy a file").Alias("c")
+	copyInput      = copyCmd.Arg("source", "file to copy from").Required().String()
+	copyOutput     = copyCmd.Arg("target", "target file").Required().String()
+	copyFrom       = copyCmd.Flag("from", "offset to copy").Short('f').Default("0").Int64()
+	copySize       = copyCmd.Flag("size", "size to copy, 0 to copy to end of file").Short('s').Default("0").Int64()
+	copyBufferSize = copyCmd.Flag("buffer", "copy buffer size in bytes").Short('b').Default("1024").Uint()
+
+	truncate   = kingpin.Command("truncate", "truncate a file").Alias("t").Alias("trun")
+	trunInput  = truncate.Arg("input", "file to truncate").Required().String()
+	trunOutput = truncate.Arg("target", "file to truncate").String()
+	trunFrom   = truncate.Flag("from", "offset to truncate").Required().Int64()
 )
 
-func main() {
-	flag.Parse()
-	if *input == "" {
-		flag.Usage()
+func copyFile() {
+	err := fsissors.FileCopy(*copyInput, *copyFrom, *copyOutput, 0, *copyBufferSize, *copySize)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "file copy error: %s\n", err.Error())
+		return
 	}
-	if *output != "" {
-		err := fsissors.FileCopy(*input, *position, *output, *whence, *bufSize, *copySize)
-		if err != nil {
-			fmt.Printf("file copy error: %s\n", err.Error())
+}
+func truncateFile() {
+	if *trunOutput == "" {
+		accept := 'N'
+		fmt.Fprintf(os.Stdout, "truncate %s to %d (y/N)", *trunInput, *trunFrom)
+		fmt.Scanf("%c", &accept)
+		if accept != 'y' && accept != 'Y' {
 			return
 		}
 	}
-	if *truncate {
-		if *output == "" {
-			accept := 'N'
-			fmt.Fprintf(os.Stderr, "truncate %s to %d (y/N)", *input, *position)
-			fmt.Scanf("%c", &accept)
-			if accept != 'y' && accept != 'Y' {
-				return
-			}
-		}
-		err := fsissors.FileTruncate(*input, *position)
-		if err != nil {
-			fmt.Printf("failed to truncate file: %s", err.Error())
-		}
+	err := fsissors.FileTruncate(*trunInput, *trunFrom)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to truncate file: %s", err.Error())
+	}
+}
+func main() {
+	kingpin.CommandLine.HelpFlag.Short('h')
+	cmd := kingpin.Parse()
+	switch cmd {
+	case copyCmd.FullCommand():
+		copyFile()
+	case truncate.FullCommand():
+		truncateFile()
 	}
 }
