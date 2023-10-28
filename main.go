@@ -2,53 +2,57 @@ package main
 
 import (
 	"fmt"
+	"github.com/alecthomas/kong"
 	"github.com/skiloop/fsissors/fsissors"
 	"os"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-var (
-	copyCmd        = kingpin.Command("copy", "copy a file").Alias("c")
-	copyInput      = copyCmd.Arg("source", "file to copy from").Required().String()
-	copyOutput     = copyCmd.Arg("target", "target file").Required().String()
-	copyFrom       = copyCmd.Flag("from", "offset to copy").Short('f').Default("0").Int64()
-	copySize       = copyCmd.Flag("size", "size to copy, 0 to copy to end of file").Short('s').Default("0").Int64()
-	copyBufferSize = copyCmd.Flag("buffer", "copy buffer size in bytes").Short('b').Default("1024").Uint()
+type CopyCmd struct {
+	Source     string `arg:"" help:"file to copy from"`
+	Target     string `arg:"" help:"output file"`
+	From       int64  `short:"f" optional:"" help:"offset to copy from" default:"0"`
+	Size       int64  `short:"s" optional:"" help:"how many bytes to copy, 0 means to end of file" default:"0"`
+	BufferSize uint   `short:"b" optional:"" help:"copy buffer size in bytes" default:"1024"`
+}
+type TruncateCmd struct {
+	Input string `arg:"" help:"source file to truncate"`
+	Size  int64  `arg:"" help:"size of output file. Nothing will be done when negative, equal to or  larger than origin file size"`
+}
 
-	truncate   = kingpin.Command("truncate", "truncate a file").Alias("t").Alias("trun")
-	trunInput  = truncate.Arg("input", "file to truncate").Required().String()
-	trunOutput = truncate.Arg("target", "file to truncate").String()
-	trunFrom   = truncate.Flag("from", "offset to truncate").Required().Int64()
-)
+var client struct {
+	Copy     CopyCmd     `cmd:"" aliases:"c" help:"copy part of a file"`
+	Truncate TruncateCmd `cmd:"" aliases:"t" help:"truncate a file"`
+}
 
 func copyFile() {
-	err := fsissors.FileCopy(*copyInput, *copyFrom, *copyOutput, 0, *copyBufferSize, *copySize)
+	err := fsissors.FileCopy(client.Copy.Source, client.Copy.From,
+		client.Copy.Target, 0, client.Copy.BufferSize, client.Copy.Size)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "file copy error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "file copy error: %s\n", err.Error())
 		return
 	}
 }
 func truncateFile() {
-	if *trunOutput == "" {
+	if client.Truncate.Input == "" {
 		accept := 'N'
-		fmt.Fprintf(os.Stdout, "truncate %s to %d (y/N)", *trunInput, *trunFrom)
-		fmt.Scanf("%c", &accept)
+		fmt.Printf("truncate %s to size %d (y/n)", client.Truncate.Input, client.Truncate.Size)
+		_, _ = fmt.Scanf("%c", &accept)
 		if accept != 'y' && accept != 'Y' {
+			fmt.Println("nothing is done")
 			return
 		}
 	}
-	err := fsissors.FileTruncate(*trunInput, *trunFrom)
+	err := fsissors.FileTruncate(client.Truncate.Input, client.Truncate.Size)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to truncate file: %s", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "failed to truncate file: %s", err.Error())
 	}
 }
 func main() {
-	kingpin.CommandLine.HelpFlag.Short('h')
-	cmd := kingpin.Parse()
-	switch cmd {
-	case copyCmd.FullCommand():
+	ctx := kong.Parse(&client)
+	switch ctx.Command() {
+	case "copy <source> <target>":
 		copyFile()
-	case truncate.FullCommand():
+	case "truncate <input> <offset>":
 		truncateFile()
 	}
 }

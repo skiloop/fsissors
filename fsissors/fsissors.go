@@ -1,8 +1,8 @@
 package fsissors
 
 import (
-	"os"
 	"io"
+	"os"
 )
 
 func FileCopy(fileName string, pos int64, fileOut string, whence int, bufSize uint, size int64) error {
@@ -74,7 +74,11 @@ func Copy(reader io.Reader, writer io.Writer, bufSize uint, size int64) (err err
 	return nil
 }
 
-func FileTruncate(filename string, pos int64) error {
+// FileTruncate truncate file
+func FileTruncate(filename string, size int64) error {
+	if size < 0 {
+		return nil
+	}
 	fin, err := os.OpenFile(filename, os.O_RDWR, 0666)
 	if err != nil {
 		return err
@@ -84,8 +88,13 @@ func FileTruncate(filename string, pos int64) error {
 	if err != nil {
 		return err
 	}
-	if pos >= stat.Size() {
+	if size >= stat.Size() {
 		return nil
 	}
-	return truncateFile(fin, pos)
+	return truncateFile(fin, size)
+}
+
+// MemCopyFile /*
+func MemCopyFile(in string, from int64, size int64, out string, offset int64) error {
+	return nil
 }
