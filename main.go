@@ -22,6 +22,8 @@ type TruncateCmd struct {
 var client struct {
 	Copy     CopyCmd     `cmd:"" aliases:"c" help:"copy part of a file"`
 	Truncate TruncateCmd `cmd:"" aliases:"t" help:"truncate a file"`
+	Verbose  bool        `short:"v" help:"verbose" default:"false"`
+	Debug    bool        `short:"d" help:"debug" default:"false"`
 }
 
 func copyFile() {
@@ -33,7 +35,7 @@ func copyFile() {
 	}
 }
 func truncateFile() {
-	if client.Truncate.Input == "" {
+	if client.Truncate.Input != "" {
 		accept := 'N'
 		fmt.Printf("truncate %s to size %d (y/n)", client.Truncate.Input, client.Truncate.Size)
 		_, _ = fmt.Scanf("%c", &accept)
@@ -49,10 +51,15 @@ func truncateFile() {
 }
 func main() {
 	ctx := kong.Parse(&client)
+	fsissors.Verbose = client.Verbose
+	fsissors.Debug = client.Debug
 	switch ctx.Command() {
 	case "copy <source> <target>":
 		copyFile()
-	case "truncate <input> <offset>":
+	case "truncate <input> <size>":
 		truncateFile()
+	default:
+		_, _ = fmt.Fprintf(os.Stderr, "unknown command: %s\n", ctx.Command())
+		_ = ctx.PrintUsage(true)
 	}
 }

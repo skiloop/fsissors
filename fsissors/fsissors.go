@@ -1,6 +1,7 @@
 package fsissors
 
 import (
+	"fmt"
 	"io"
 	"os"
 )
@@ -16,7 +17,9 @@ func FileCopy(fileName string, pos int64, fileOut string, whence int, bufSize ui
 	if err != nil {
 		return err
 	}
-	defer fin.Close()
+	defer func(fin *os.File) {
+		_ = fin.Close()
+	}(fin)
 	stat, err := fin.Stat()
 	if err != nil {
 		return err
@@ -33,7 +36,9 @@ func FileCopy(fileName string, pos int64, fileOut string, whence int, bufSize ui
 
 		return err
 	}
-	defer out.Close()
+	defer func(out *os.File) {
+		_ = out.Close()
+	}(out)
 	return Copy(fin, out, bufSize, size)
 }
 
@@ -42,8 +47,8 @@ func truncateFile(fin *os.File, pos int64) error {
 	if err != nil {
 		return err
 	}
-	fin.Seek(0, 0)
-	fin.Sync()
+	_, _ = fin.Seek(0, 0)
+	_ = fin.Sync()
 	return nil
 }
 func Copy(reader io.Reader, writer io.Writer, bufSize uint, size int64) (err error) {
@@ -61,9 +66,9 @@ func Copy(reader io.Reader, writer io.Writer, bufSize uint, size int64) (err err
 			if size > 0 && copySize+int64(n) > size {
 				n = int(size - copySize)
 			}
-			_, werr := writer.Write(buf[:n])
-			if werr != nil {
-				return werr
+			_, writeErr := writer.Write(buf[:n])
+			if writeErr != nil {
+				return writeErr
 			}
 			copySize += int64(n)
 		}
@@ -77,24 +82,33 @@ func Copy(reader io.Reader, writer io.Writer, bufSize uint, size int64) (err err
 // FileTruncate truncate file
 func FileTruncate(filename string, size int64) error {
 	if size < 0 {
+		if Verbose {
+			fmt.Printf("nothing is done for size is negative: %d\n", size)
+		}
 		return nil
 	}
 	fin, err := os.OpenFile(filename, os.O_RDWR, 0666)
 	if err != nil {
 		return err
 	}
-	defer fin.Close()
+	defer func(fin *os.File) {
+		_ = fin.Close()
+	}(fin)
 	stat, err := fin.Stat()
 	if err != nil {
 		return err
 	}
 	if size >= stat.Size() {
+		if Verbose {
+			fmt.Printf("input size %d >= %d\n", size, stat.Size())
+		}
 		return nil
 	}
+	fmt.Printf("truncate %s to size %d\n", filename, size)
 	return truncateFile(fin, size)
 }
 
 // MemCopyFile /*
-func MemCopyFile(in string, from int64, size int64, out string, offset int64) error {
-	return nil
-}
+//func MemCopyFile(in string, from int64, size int64, out string, offset int64) error {
+//	return nil
+//}
