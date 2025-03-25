@@ -1,6 +1,7 @@
 package fsissors
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,11 +15,17 @@ import (
 // bufSize: 缓冲区大小，如果为0则使用默认值1024
 // size: 要复制的字节数，如果为0则复制到文件末尾
 func FileCopy(fileName string, pos int64, fileOut string, whence int, bufSize uint, size int64) error {
+	if fileName == "" || fileOut == "" {
+		return errors.New("文件名不能为空")
+	}
+	if bufSize > 1024*1024*10 { // 限制缓冲区最大为 10MB
+		bufSize = 1024 * 1024 * 10
+	}
 	if bufSize == 0 {
 		bufSize = 1024
 	}
-	if whence != 0 && whence != 1 && whence != 2 {
-		whence = 0
+	if whence != io.SeekStart && whence != io.SeekCurrent && whence != io.SeekEnd {
+		whence = io.SeekStart
 	}
 	fin, err := os.Open(fileName)
 	if err != nil {
@@ -32,7 +39,7 @@ func FileCopy(fileName string, pos int64, fileOut string, whence int, bufSize ui
 		return err
 	}
 	if pos >= stat.Size() {
-		return err
+		return errors.New("position exceed file size")
 	}
 	_, err = fin.Seek(pos, whence)
 	if err != nil {
@@ -44,6 +51,7 @@ func FileCopy(fileName string, pos int64, fileOut string, whence int, bufSize ui
 		return err
 	}
 	defer func(out *os.File) {
+		_ = out.Sync()
 		_ = out.Close()
 	}(out)
 	return Copy(fin, out, bufSize, size)
@@ -54,10 +62,13 @@ func truncateFile(fin *os.File, pos int64) error {
 	if err != nil {
 		return err
 	}
-	_, _ = fin.Seek(0, 0)
-	_ = fin.Sync()
-	return nil
+	_, err = fin.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+	return fin.Sync()
 }
+
 // Copy copies data from the reader to the writer using a buffer of the specified size.
 // If size is greater than 0, it copies exactly that many bytes.
 // If size is 0 or less, it copies until EOF.
