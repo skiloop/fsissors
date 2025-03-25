@@ -17,7 +17,7 @@ type CopyCmd struct {
 
 type TruncateCmd struct {
 	Input string `arg:"" help:"source file to truncate"`
-	Size  int64  `arg:"" help:"size of output file. Nothing will be done when negative, equal to or  larger than origin file size"`
+	Size  int64  `arg:"" help:"size of output file. \nThe front part of the file will be remove if size < 0.\nNothing will be done when size equal to or larger than origin file size"`
 }
 
 type ModifyCmd struct {
